@@ -89,7 +89,7 @@ class ItemFacilityLPSolver:
 
     def _get_order_types_probs_and_safety_stocks(self):
         order_types = self.order_fulfillment.order_types
-        lambda_ = self._reshape_probs(self.order_fulfillment.agg_adjusted_demand_distribution_by_type_by_location) # same as non-adjusted
+        lambda_ = self._reshape_probs(self.order_fulfillment.agg_adjusted_demand_distribution_by_type_by_location)
         S = self.order_fulfillment.safety_stock
         return order_types, lambda_, S
 

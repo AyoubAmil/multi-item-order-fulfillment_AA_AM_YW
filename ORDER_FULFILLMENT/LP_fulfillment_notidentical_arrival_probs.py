@@ -15,7 +15,9 @@ class SolvingLP:
         self.S = order_fulfillment.safety_stock  # Inventory for each (i, k) pair
         self.c = order_fulfillment.all_costs  # Return the cost of each method
         self.all_indicators = order_fulfillment.all_indicators # Return the indicators $(i,k) \in m$ for each (i, k) pair
-        self.alpha = order_fulfillment.alpha  
+        self.alpha = order_fulfillment.alpha
+        self.reshape_adjusted_arrival_prob = order_fulfillment.reshape_adjusted_arrival_prob
+        self.reshape_agg_adjusted_arrival_prob = order_fulfillment.reshape_agg_adjusted_arrival_prob
 
         self.solved_model = None
         self.model_solution = None
@@ -94,9 +96,12 @@ class SolvingLP:
             print("Model has not been solved yet or no optimal solution was found.")
             return None
 
-    def calculate_probabilities_of_consumption(self, LP_solution, sizes):
-        """Calculate time-dependent probability of consumption at time t for each pair (i, k)."""
+    def calculate_probabilities_of_consumption(self, LP_solution):
+        """Calculate time-dependent probability of consumption at time t for each pair (i, k), adjusted by demand distributions."""
         consumption_probability_lists = {}
+
+        # Flatten agg_adjusted_demand_distribution_by_type_by_location
+        agg_distribution_flat = self.reshape_agg_adjusted_arrival_prob
 
         # Loop through all (i, k) pairs
         for i_k_pair in self.all_indicators:
@@ -105,32 +110,67 @@ class SolvingLP:
 
             # Loop through all time periods
             for t in range(1, self.T + 1):
-                probability_sum = 0
+                
+                probability_t = 0
 
-                # Determine the scaling factor based on the time period
-                alpha_scale = 2 * self.alpha if t <= self.T // 2 else 2 * (1 - self.alpha)
+                # Flatten the distribution for time t to match structure of agg_distribution_flat
+                distribution_t_flat = self.reshape_adjusted_arrival_prob[t-1]
 
-                # Calculate solutions for methods that contain (i, k)
                 for q in range(len(self.all_indicators[i_k_pair])):
-                    if sizes[q] == 1:
-                        # Apply scaling for orders of size 1
-                        scaled_solution = [LP_solution[q][method_index] * alpha_scale
-                                        for method_index, method_value in enumerate(self.all_indicators[i_k_pair][q]) if method_value == 1]
-                    else:
-                        # Apply scaling for orders of size greater than 1
-                        scaled_solution = [LP_solution[q][method_index] * (2 - alpha_scale)
-                                        for method_index, method_value in enumerate(self.all_indicators[i_k_pair][q]) if method_value == 1]
                     
-                    probability_sum += sum(scaled_solution)
+                    adjusted_prob_t = distribution_t_flat[q]
+                    agg_prob = agg_distribution_flat[q]
                     
-                # Calculate the probability for the time t
-                probability_t = probability_sum / self.T
+                    scaled_solution = [LP_solution[q][method_index] * (adjusted_prob_t / agg_prob)
+                                       for method_index, method_value in enumerate(self.all_indicators[i_k_pair][q]) if method_value == 1]
+                    
+                    probability_t += sum(scaled_solution)
+            
                 consumption_probability_list.append(probability_t)
 
             # Save the probability list for the (i, k) pair
             consumption_probability_lists[i_k_pair] = consumption_probability_list
 
         return consumption_probability_lists
+
+
+    # def calculate_probabilities_of_consumption(self, LP_solution, sizes):
+    #     """Calculate time-dependent probability of consumption at time t for each pair (i, k)."""
+    #     consumption_probability_lists = {}
+
+    #     # Loop through all (i, k) pairs
+    #     for i_k_pair in self.all_indicators:
+    #         # Initialize an empty list to store probabilities for each time t
+    #         consumption_probability_list = []
+
+    #         # Loop through all time periods
+    #         for t in range(1, self.T + 1):
+    #             probability_sum = 0
+
+    #             # Determine the scaling factor based on the time period
+    #             alpha_scale = 2 * self.alpha if t <= self.T // 2 else 2 * (1 - self.alpha)
+
+    #             # Calculate solutions for methods that contain (i, k)
+    #             for q in range(len(self.all_indicators[i_k_pair])):
+    #                 if sizes[q] == 1:
+    #                     # Apply scaling for orders of size 1
+    #                     scaled_solution = [LP_solution[q][method_index] * alpha_scale
+    #                                     for method_index, method_value in enumerate(self.all_indicators[i_k_pair][q]) if method_value == 1]
+    #                 else:
+    #                     # Apply scaling for orders of size greater than 1
+    #                     scaled_solution = [LP_solution[q][method_index] * (2 - alpha_scale)
+    #                                     for method_index, method_value in enumerate(self.all_indicators[i_k_pair][q]) if method_value == 1]
+                    
+    #                 probability_sum += sum(scaled_solution)
+                    
+    #             # Calculate the probability for the time t
+    #             probability_t = probability_sum / self.T
+    #             consumption_probability_list.append(probability_t)
+
+    #         # Save the probability list for the (i, k) pair
+    #         consumption_probability_lists[i_k_pair] = consumption_probability_list
+
+    #     return consumption_probability_lists
     
     # def calculate_probabilities_of_consumption(self, LP_solution, sizes, methods):
     #     """Calculate time-dependent probability of consumption at time t for each pair (i, k)."""

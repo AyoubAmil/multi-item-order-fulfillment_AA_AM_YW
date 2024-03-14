@@ -43,8 +43,9 @@ class OrderFulfillment:
         self.location_customers_by_facility_and_item = self.get_location_customers_by_facility_and_item(self.facility_indices, self.items, self.city_locations, self.facility_locations, self.df_inventory, self.num_items) # Set of cities served by each facility for each item
         self.expected_demand_k_i = self.calculate_expected_demand(self.facility_indices, self.items, self.location_customers_by_facility_and_item, self.order_types, self.adjusted_demand_distribution_by_type_by_location) # Expected demand for each facility and item
         self.safety_stock = self.calculate_safety_stock(self.facility_indices, self.items, self.T, self.expected_demand_k_i, self.CSL) # Safety stock for each facility and item
-        self.agg_adjusted_demand_distribution_by_type_by_location = self.aggregate_demand_distribution() # Aggregate (across time) demand distribution by type by location
-        self.reshape_adjusted_arrival_prob = self.reshape_probs(self.adjusted_demand_distribution_by_type_by_location) # Reshape the demand distribution
+        # self.agg_adjusted_demand_distribution_by_type_by_location = self.aggregate_demand_distribution() # Aggregate (across time) demand distribution by type by location
+        self.agg_adjusted_demand_distribution_by_type_by_location = self.aggregate_demand_distribution(self.T, self.adjusted_demand_distribution_by_type_by_location)
+        self.reshape_adjusted_arrival_prob = self.reshape_modified_probs(self.adjusted_demand_distribution_by_type_by_location) # Reshape the adjusted demand distribution
         self.reshape_agg_adjusted_arrival_prob = self.reshape_probs(self.agg_adjusted_demand_distribution_by_type_by_location) # Reshape the aggregate demand distribution
         self.all_methods_location = self.find_all_order_methods_location(self.df_orders_location, self.facility_indices, self.safety_stock) # Find all methods for each (order,location)
         self.all_costs = self.calculate_all_costs(self.all_methods_location, self.fixed_costs, self.unit_costs) # Calculate costs for all methods
@@ -230,6 +231,7 @@ class OrderFulfillment:
     def adjust_arrival_probabilities(self, T):
         """
         Adjust the arrival probabilities based on whether we are in the first or second half of fulfillment and the order size.
+        Normalizes the probabilities across all order types and locations for each time period t.
         """
         # Initialize the structure to hold the adjusted probabilities
         adjusted_demand_distribution_by_type_by_location = []
@@ -240,8 +242,10 @@ class OrderFulfillment:
 
         # Loop over each time period
         for t in range(1, T + 1):
-            # Temporary list for the adjusted probabilities in the current period by order size
-            temp_probs_by_time_period = []
+            temp_probs_by_time_period = []  # Temporary list for the adjusted probabilities in the current period by order size
+
+            # Store all probabilities for normalization purposes
+            all_probs_for_normalization = []
 
             # Loop over each order size
             for n, order_types_probs in enumerate(self.demand_distribution_by_type_by_location):
@@ -249,8 +253,8 @@ class OrderFulfillment:
 
                 # Loop over each order type for the current order size
                 for q, probs_by_location in enumerate(order_types_probs):
-                    # Adjust the probabilities based on the order size and the time period
-                    adjusted_probs_by_location = []
+                    adjusted_probs_by_location = []  # Adjust the probabilities based on the order size and the time period
+                    
                     for j, prob in enumerate(probs_by_location):
                         if n == 0:
                             # Leave the zero order size probabilities as they are
@@ -263,14 +267,75 @@ class OrderFulfillment:
                             adjusted_prob = alpha_scale_second_half * prob if 1 <= t <= self.T // 2 else alpha_scale_first_half * prob
                         adjusted_probs_by_location.append(adjusted_prob)
 
-                    temp_probs_by_order_type.append(adjusted_probs_by_location)
+                    temp_probs_by_order_type.extend(adjusted_probs_by_location)
 
+                # Collect all probabilities for normalization
+                all_probs_for_normalization.extend(temp_probs_by_order_type)
+
+            # Normalize the collected probabilities so they sum to 1
+            total_prob = sum(all_probs_for_normalization)
+            normalized_probs = [prob / total_prob for prob in all_probs_for_normalization] if total_prob > 0 else all_probs_for_normalization
+
+            # Re-distribute the normalized probabilities back to the original structure
+            index = 0
+            for n, order_types_probs in enumerate(self.demand_distribution_by_type_by_location):
+                temp_probs_by_order_type = []
+                for q, probs_by_location in enumerate(order_types_probs):
+                    normalized_probs_by_location = normalized_probs[index:index+len(probs_by_location)]
+                    index += len(probs_by_location)
+                    temp_probs_by_order_type.append(normalized_probs_by_location)
                 temp_probs_by_time_period.append(temp_probs_by_order_type)
 
-            # Add the adjusted probabilities for the current period to the overall structure
+            # Add the adjusted and normalized probabilities for the current period to the overall structure
             adjusted_demand_distribution_by_type_by_location.append(temp_probs_by_time_period)
 
         return adjusted_demand_distribution_by_type_by_location
+
+    
+    # def adjust_arrival_probabilities(self, T):
+    #     """
+    #     Adjust the arrival probabilities based on whether we are in the first or second half of fulfillment and the order size.
+    #     """
+    #     # Initialize the structure to hold the adjusted probabilities
+    #     adjusted_demand_distribution_by_type_by_location = []
+
+    #     # Determine scaling factors based on the time period
+    #     alpha_scale_first_half = 2 * self.alpha
+    #     alpha_scale_second_half = 2 * (1 - self.alpha)
+
+    #     # Loop over each time period
+    #     for t in range(1, T + 1):
+    #         # Temporary list for the adjusted probabilities in the current period by order size
+    #         temp_probs_by_time_period = []
+
+    #         # Loop over each order size
+    #         for n, order_types_probs in enumerate(self.demand_distribution_by_type_by_location):
+    #             temp_probs_by_order_type = []  # Temp list for the current order size
+
+    #             # Loop over each order type for the current order size
+    #             for q, probs_by_location in enumerate(order_types_probs):
+    #                 # Adjust the probabilities based on the order size and the time period
+    #                 adjusted_probs_by_location = []
+    #                 for j, prob in enumerate(probs_by_location):
+    #                     if n == 0:
+    #                         # Leave the zero order size probabilities as they are
+    #                         adjusted_prob = prob
+    #                     elif n == 1:
+    #                         # Scale probabilities for order size of 1
+    #                         adjusted_prob = alpha_scale_first_half * prob if 1 <= t <= self.T // 2 else alpha_scale_second_half * prob
+    #                     else:
+    #                         # Scale probabilities for order size greater than 1
+    #                         adjusted_prob = alpha_scale_second_half * prob if 1 <= t <= self.T // 2 else alpha_scale_first_half * prob
+    #                     adjusted_probs_by_location.append(adjusted_prob)
+
+    #                 temp_probs_by_order_type.append(adjusted_probs_by_location)
+
+    #             temp_probs_by_time_period.append(temp_probs_by_order_type)
+
+    #         # Add the adjusted probabilities for the current period to the overall structure
+    #         adjusted_demand_distribution_by_type_by_location.append(temp_probs_by_time_period)
+
+    #     return adjusted_demand_distribution_by_type_by_location
     
     
     # Create dataframe of order types
@@ -350,21 +415,37 @@ class OrderFulfillment:
         return expected_demand_k_i
 
     # Calculate safety stock for each facility k and item i
+    # def calculate_safety_stock(self, facility_indices, items, T, expected_demand_k_i, CSL, modified = 0):
+    #     """
+    #     Calculate inventory level. No safety stock if modified = 0
+    #     """
+    #     mu = []
+    #     sd = []
+    #     for k in facility_indices:
+    #         for i in items:
+    #             mu.append(T * expected_demand_k_i[k*len(items)+i])
+    #             sd.append(np.sqrt(T * expected_demand_k_i[k*len(items)+i] * (1 - expected_demand_k_i[k*len(items)+i])))
+    #     S = []
+    #     for k in facility_indices:
+    #         S_k = []
+    #         for i in items:
+    #             S_k.append(np.ceil(mu[k*len(items)+i] + modified * sps.norm.ppf(CSL, loc=0, scale=1) * sd[k*len(items)+i]))
+    #         S.append(S_k)
+    #     return S
+    
     def calculate_safety_stock(self, facility_indices, items, T, expected_demand_k_i, CSL, modified = 0):
         """
         Calculate inventory level. No safety stock if modified = 0
         """
         mu = []
-        sd = []
         for k in facility_indices:
             for i in items:
                 mu.append(T * expected_demand_k_i[k*len(items)+i])
-                sd.append(np.sqrt(T * expected_demand_k_i[k*len(items)+i] * (1 - expected_demand_k_i[k*len(items)+i])))
         S = []
         for k in facility_indices:
             S_k = []
             for i in items:
-                S_k.append(np.ceil(mu[k*len(items)+i] + modified * sps.norm.ppf(CSL, loc=0, scale=1) * sd[k*len(items)+i]))
+                S_k.append(np.ceil(mu[k*len(items)+i]))
             S.append(S_k)
         return S
     
@@ -417,9 +498,40 @@ class OrderFulfillment:
         return all_methods
     
     # Aggregate demand distribution over time (this does not change because of the transformation on the arrival probabilities)
-    def aggregate_demand_distribution(self):
-        # In the next line, demand_distribution_by_type_by_location is the ORIGINAL ARRIVAL PROBAB
-        return [[[element * self.T for element in row] for row in submatrix] for submatrix in self.demand_distribution_by_type_by_location]
+    # def aggregate_demand_distribution(self):
+    #     # In the next line, demand_distribution_by_type_by_location is the ORIGINAL ARRIVAL PROBAB
+    #     return [[[element * self.T for element in row] for row in submatrix] for submatrix in self.demand_distribution_by_type_by_location]
+
+    def aggregate_demand_distribution(self, T, adjusted_demand_distribution_by_type_by_location):
+        # Extract the first and last time period distributions
+        first_period_distribution = adjusted_demand_distribution_by_type_by_location[0]
+        last_period_distribution = adjusted_demand_distribution_by_type_by_location[-1]
+
+        # Calculate scaling factors based on T
+        scale_factor = T / 2
+
+        # Initialize the structure for the new distribution
+        aggregate_demand_distribution = []
+
+        # Iterate over the order sizes
+        for n, (first_order_types, last_order_types) in enumerate(zip(first_period_distribution, last_period_distribution)):
+            new_order_type_probs = []
+
+            # Iterate over the order types for the current order size
+            for q, (first_probs_by_location, last_probs_by_location) in enumerate(zip(first_order_types, last_order_types)):
+                new_probs_by_location = []
+
+                # Iterate over each location for the current order type and size
+                for first_prob, last_prob in zip(first_probs_by_location, last_probs_by_location):
+                    # Calculate the new probability based on the formula provided
+                    new_prob = scale_factor * first_prob + scale_factor * last_prob
+                    new_probs_by_location.append(new_prob)
+
+                new_order_type_probs.append(new_probs_by_location)
+            
+            aggregate_demand_distribution.append(new_order_type_probs)
+
+        return aggregate_demand_distribution
 
     # Reshape a nested (3D) distribution
     def reshape_probs(self, nested_distribution):
@@ -429,6 +541,13 @@ class OrderFulfillment:
             for k in i:
                 for j in k:
                     reshape_arrival_prob.append(j)
+        return reshape_arrival_prob
+    
+    # Reshape a nested (4D) distribution
+    def reshape_modified_probs(self, nested_distribution):
+        reshape_arrival_prob = []
+        for t in range(len(nested_distribution)):
+            reshape_arrival_prob.append(self.reshape_probs(nested_distribution[t]))
         return reshape_arrival_prob
     
     # For each (order,location) find all methods. Each elements is a list of methods, with each method being a list of (i,k) tuples

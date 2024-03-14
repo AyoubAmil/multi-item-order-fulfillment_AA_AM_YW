@@ -7,19 +7,18 @@ from LP_fulfillment_item_facility_based import ItemFacilityLPSolver
 
 facility_path = "fulfillment_centers_warmup.csv"
 cities_path = "cities_warmup.csv"
-home_path = "/Users/ayoubamil/Documents/Documents/GitHub/fulfillment-magician_AA_AM_YW/ORDER_FULFILLMENT/Data"
+home_path = "/Users/ayoubamil/Documents/GitHub/multi-item-order-fulfillment_AA_AM_YW/ORDER_FULFILLMENT/Data"
 facilities_path = os.path.join(home_path, facility_path)
 cities_path =  os.path.join(home_path, cities_path)
 
 num_instances = 30
 instances = np.arange(1, num_instances + 1)
 # T_values = [10**3, 10**4, 10**5, 10**6]
-# T_values = [10**3, 10**4]
-T_values = [10**1, 10**2]
+T_values = [10**3]
 # alpha_values = [0.1, 0.5, 0.75, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 1]
-alpha_values = [0.1, 0.5, 0.75, 0.9, 0.95, 0.97, 1]
-# T_base = 10**3
-T_base = 10**1
+# alpha_values = [0.5, 0.9, 1]
+alpha_values = [0, 0.5, 1]
+T_base = 10**3
 alpha_base = 0.5
 
 num_items = 20
@@ -81,36 +80,36 @@ for instance in instances:
             scaled_inner_dict = {m: value * scale_factor for m, value in inner_dict.items()}
             LP_solution_scaled[q] = scaled_inner_dict
         
-        order_fulfillment_wm = OrderFulfillment(num_items=num_items, n_max=n_max, n_0=n_0, p_stock=p_stock, T=T, CSL=CSL, 
-                                                facilities_data=facilities_path, 
-                                                cities_data=cities_path, 
-                                                prob_seed_value=instance, 
-                                                order_seed_value=instance, 
-                                                inv_seed_value=instance, 
-                                                alpha=alpha_base)
+        # order_fulfillment_wm = OrderFulfillment(num_items=num_items, n_max=n_max, n_0=n_0, p_stock=p_stock, T=T, CSL=CSL, 
+        #                                         facilities_data=facilities_path, 
+        #                                         cities_data=cities_path, 
+        #                                         prob_seed_value=instance, 
+        #                                         order_seed_value=instance, 
+        #                                         inv_seed_value=instance, 
+        #                                         alpha=alpha_base)
         
-        wm_num_vars, wm_num_constrs, wm_optimal_value, optimal_u, optimal_y, wm_optimization_duration = DLP_WillMa(order_fulfillment_wm)
+        # wm_num_vars, wm_num_constrs, wm_optimal_value, optimal_u, optimal_y, wm_optimization_duration = DLP_WillMa(order_fulfillment_wm)
         
-        # Save WM results
-        instance_dir_wm = f'LP_results_WM_instance={instance}/n_max={n_max}/T={T}'
+        # # Save WM results
+        # instance_dir_wm = f'LP_results_WM_instance={instance}/n_max={n_max}/T={T}'
         
-        if not os.path.exists(instance_dir_wm):
-            os.makedirs(instance_dir_wm)
+        # if not os.path.exists(instance_dir_wm):
+        #     os.makedirs(instance_dir_wm)
 
-        with open(f'{instance_dir_wm}/wm_num_vars.pkl', 'wb') as f:
-            pickle.dump(wm_num_vars, f)
-        with open(f'{instance_dir_wm}/wm_num_constrs.pkl', 'wb') as f:
-            pickle.dump(wm_num_constrs, f)
-        with open(f'{instance_dir_wm}/wm_optimal_value.pkl', 'wb') as f:
-            pickle.dump(wm_optimal_value, f)
-        with open(f'{instance_dir_wm}/optimal_u.pkl', 'wb') as f:
-            pickle.dump(optimal_u, f)
-        with open(f'{instance_dir_wm}/optimal_y.pkl', 'wb') as f:
-            pickle.dump(optimal_y, f)
-        with open(f'{instance_dir_wm}/wm_optimization_duration.pkl', 'wb') as f:
-            pickle.dump(wm_optimization_duration, f)
-        with open(f'{instance_dir_wm}/our_optimization_duration.pkl', 'wb') as f:
-                pickle.dump(our_optimization_duration, f)
+        # with open(f'{instance_dir_wm}/wm_num_vars.pkl', 'wb') as f:
+        #     pickle.dump(wm_num_vars, f)
+        # with open(f'{instance_dir_wm}/wm_num_constrs.pkl', 'wb') as f:
+        #     pickle.dump(wm_num_constrs, f)
+        # with open(f'{instance_dir_wm}/wm_optimal_value.pkl', 'wb') as f:
+        #     pickle.dump(wm_optimal_value, f)
+        # with open(f'{instance_dir_wm}/optimal_u.pkl', 'wb') as f:
+        #     pickle.dump(optimal_u, f)
+        # with open(f'{instance_dir_wm}/optimal_y.pkl', 'wb') as f:
+        #     pickle.dump(optimal_y, f)
+        # with open(f'{instance_dir_wm}/wm_optimization_duration.pkl', 'wb') as f:
+        #     pickle.dump(wm_optimization_duration, f)
+        # with open(f'{instance_dir_wm}/our_optimization_duration.pkl', 'wb') as f:
+        #         pickle.dump(our_optimization_duration, f)
         
         for alpha in alpha_values:
             order_fulfillment = OrderFulfillment(num_items=num_items, n_max=n_max, n_0=n_0, p_stock=p_stock, T=T, CSL=CSL, 
@@ -120,9 +119,34 @@ for instance in instances:
                                                 order_seed_value=instance, 
                                                 inv_seed_value=instance, 
                                                 alpha=alpha)
+        
+            wm_num_vars, wm_num_constrs, wm_optimal_value, optimal_u, optimal_y, wm_optimization_duration = DLP_WillMa(order_fulfillment)
+            
+            # SAVE WM RESULTS
+            instance_dir_wm = f'LP_results_WM_instance={instance}/n_max={n_max}/T={T}_alpha={alpha}'
+            
+            if not os.path.exists(instance_dir_wm):
+                os.makedirs(instance_dir_wm)
 
+            with open(f'{instance_dir_wm}/wm_num_vars.pkl', 'wb') as f:
+                pickle.dump(wm_num_vars, f)
+            with open(f'{instance_dir_wm}/wm_num_constrs.pkl', 'wb') as f:
+                pickle.dump(wm_num_constrs, f)
+            with open(f'{instance_dir_wm}/wm_optimal_value.pkl', 'wb') as f:
+                pickle.dump(wm_optimal_value, f)
+            with open(f'{instance_dir_wm}/optimal_u.pkl', 'wb') as f:
+                pickle.dump(optimal_u, f)
+            with open(f'{instance_dir_wm}/optimal_y.pkl', 'wb') as f:
+                pickle.dump(optimal_y, f)
+            with open(f'{instance_dir_wm}/wm_optimization_duration.pkl', 'wb') as f:
+                pickle.dump(wm_optimization_duration, f)
+            with open(f'{instance_dir_wm}/our_optimization_duration.pkl', 'wb') as f:
+                    pickle.dump(our_optimization_duration, f)
+
+            # SAVE OUR RESULTS
             solving_LP_instance = SolvingLP(order_fulfillment)
-            consumption_probability_lists = solving_LP_instance.calculate_probabilities_of_consumption(LP_solution_scaled, sizes_base)
+            # consumption_probability_lists = solving_LP_instance.calculate_probabilities_of_consumption(LP_solution_scaled, sizes_base)
+            consumption_probability_lists = solving_LP_instance.calculate_probabilities_of_consumption(LP_solution_scaled)
             get_optimization_results = {"x_values": LP_solution_scaled, "num_vars": num_vars_base, 
                 "num_constrs": num_constrs_base, "optimal_value": optimal_value_base * scale_factor}
 

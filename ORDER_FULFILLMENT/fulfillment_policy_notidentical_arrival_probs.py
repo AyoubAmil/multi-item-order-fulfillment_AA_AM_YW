@@ -56,7 +56,20 @@ class FulfillmentPolicy:
         sampled_method = self.methods[sampled_order][sampled_value]
         return(sampled_order, sampled_method, sampled_value)
     
-    def generate_magician_problems(self, conservative_prob):
+    def solve_cdfs_magician_problems(self, conservative_prob):
+        cdfs_magician_problems = {}
+        for pair_i_k in self.order_fulfillment.all_indicators:
+            # Get the breaking wand probabilities for (i,k) and the gamma value
+            breaking_wand_probabilities_ik = self.consumption_probability_lists[pair_i_k]
+            gamma_ik = 1-conservative_prob/np.sqrt(self.order_fulfillment.safety_stock[pair_i_k[1]][pair_i_k[0]]+3)
+            # Create magician instance for (i,k) and compute all cdfs
+            magician_problem = MagicianProblem(breaking_wand_probabilities_ik, gamma_ik, self.order_fulfillment)
+            magician_problem.compute_all_CDFs()
+            cdfs_magician_ik = magician_problem.all_cdfs
+            cdfs_magician_problems[pair_i_k] = cdfs_magician_ik
+        return cdfs_magician_problems
+    
+    def solve_magician_problems(self, conservative_prob, cdfs_magician_problems):
         magician_problems = {}
         for pair_i_k in self.order_fulfillment.all_indicators:
             # Create a magician problem
@@ -67,11 +80,28 @@ class FulfillmentPolicy:
                 print('expected number of broken wands larger than the available ones')
             # Create magician instance for (i,k) and check whether they open
             magician_problem = MagicianProblem(magician_problems[pair_i_k]['breaking_wand_probabilities'], magician_problems[pair_i_k]['gamma'], self.order_fulfillment)
-            theta, open_list, prob_rand = magician_problem.solve()
+            theta, open_list, prob_rand = magician_problem.solve_withcdfs(cdfs_magician_problems[pair_i_k])
             magician_problems[pair_i_k]['theta'] = theta
             magician_problems[pair_i_k]['open_list'] = open_list
             magician_problems[pair_i_k]['prob_rand'] = prob_rand
         return magician_problems
+    
+    # def generate_magician_problems(self, conservative_prob):
+    #     magician_problems = {}
+    #     for pair_i_k in self.order_fulfillment.all_indicators:
+    #         # Create a magician problem
+    #         magician_problems[pair_i_k] = {}
+    #         magician_problems[pair_i_k]['breaking_wand_probabilities'] = self.consumption_probability_lists[pair_i_k]
+    #         magician_problems[pair_i_k]['gamma'] = 1-conservative_prob/np.sqrt(self.order_fulfillment.safety_stock[pair_i_k[1]][pair_i_k[0]]+3)
+    #         if sum(magician_problems[pair_i_k]['breaking_wand_probabilities']) > self.order_fulfillment.safety_stock[pair_i_k[1]][pair_i_k[0]]:
+    #             print('expected number of broken wands larger than the available ones')
+    #         # Create magician instance for (i,k) and check whether they open
+    #         magician_problem = MagicianProblem(magician_problems[pair_i_k]['breaking_wand_probabilities'], magician_problems[pair_i_k]['gamma'], self.order_fulfillment)
+    #         theta, open_list, prob_rand = magician_problem.solve()
+    #         magician_problems[pair_i_k]['theta'] = theta
+    #         magician_problems[pair_i_k]['open_list'] = open_list
+    #         magician_problems[pair_i_k]['prob_rand'] = prob_rand
+    #     return magician_problems
     
     def initialize_inventory_consumption(self):
         inventory_consumption = {}

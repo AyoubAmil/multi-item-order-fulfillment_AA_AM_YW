@@ -12,9 +12,9 @@ n_0 = 5
 p_stock = 0.75
 CSL=0.5
 
-conservative_prob_sequence=[0, 0.001, 0.01, 0.1, 0.2, 0.25, 0.5, 1]
+conservative_prob_sequence=[0, 0.01, 0.05, 0.1, 0.15, 0.2, 1]
 
-num_order_sequences = 30
+num_order_sequences = 100
 
 facility_path = "fulfillment_centers_warmup.csv"
 cities_path = "cities_warmup.csv"
@@ -101,7 +101,7 @@ def evaluate_policies(n_max, T, alpha, instance, num_order_sequences=num_order_s
     
     for conservative_prob in conservative_prob_sequence:
         # Generate magician problems (dictionary where the keys are (i,k))
-        magician_problems = fulfillment_policy.generate_magician_problems(conservative_prob=conservative_prob)
+        cdfs_magician_problems = fulfillment_policy.solve_cdfs_magician_problems(conservative_prob=conservative_prob)
         
         # FOR EACH INSTANCE, GENERATE DIFFERENT ORDER SEQUENCES (i.e. order arrivals through time)
         order_sequences = np.arange(1, num_order_sequences + 1) # seed_value for each order sequence
@@ -122,9 +122,11 @@ def evaluate_policies(n_max, T, alpha, instance, num_order_sequences=num_order_s
         
         for order_sequence in order_sequences:
             
+            magician_problems = fulfillment_policy.solve_magician_problems(conservative_prob=conservative_prob, cdfs_magician_problems=cdfs_magician_problems)
+            
             # Initialize inventory consumption for our fulfillment policy
             inventory_consumption = fulfillment_policy.initialize_inventory_consumption()
-            sampled_orders_index, sampled_orders, sampled_methods, accepts_decisions, fulfillment_costs = fulfillment_policy.new_fulfillment_policy(inventory_consumption, magician_problems, seed_value=order_sequence)
+            sampled_orders_index, sampled_orders, sampled_methods, accepts_decisions, fulfillment_costs = fulfillment_policy.new_fulfillment_policy_end_modified(inventory_consumption, magician_problems, seed_value=order_sequence)
             fulfillment_policy.check_consistency(inventory_consumption)
             total_fulfillment_cost = sum(fulfillment_costs)
             our_policy_orders_methods_decisions["orders"] = sampled_orders

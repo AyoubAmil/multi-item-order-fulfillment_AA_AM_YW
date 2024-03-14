@@ -34,11 +34,13 @@ with open('ORDER_FULFILLMENT/cluster_simulation.py', 'r') as f:
         script.append(line)
         line = f.readline()
 
-# T_values = [10**3, 10**4, 10**5, 10**6]
-T_values = [10**1, 10**2]
+# T_values = [10**3]
+T_values = [10**3]
 # alpha_values = [0.1, 0.5, 0.75, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 1]
-alpha_values = [0.1, 0.5, 0.75, 0.9, 0.95, 0.97, 1]
-n_max_values = [2, 5, 10]
+# alpha_values = [0.5, 0.9, 1]
+alpha_values = [0, 0.2, 0.5, 0.75, 0.9, 1]
+# n_max_values = [2, 5, 10]
+n_max_values = [2, 5]
 
 script = script[:-1]
 for n_max in n_max_values:
@@ -60,7 +62,7 @@ for n_max in n_max_values:
                     output_file.write(r'#SBATCH --mail-type=begin #send email when job begins' + '\n')
                     output_file.write(r'#SBATCH --mail-type=end   #send email when job ends' + '\n')
                     output_file.write(r'#SBATCH --mail-user=aa554@duke.edu' + '\n')
-                    output_file.write(r'#SBATCH --mem-per-cpu=64G  # adjust as needed' + '\n')
+                    output_file.write(r'#SBATCH --mem-per-cpu=32G  # adjust as needed' + '\n')
                     output_file.write(r'#SBATCH -c 4 # CPU cores, adjust as needed' + '\n')
                     output_file.write(r'module purge' + '\n')
                     output_file.write(r'module load /opt/apps/modules-bak/Python/3.8.1' + '\n')
