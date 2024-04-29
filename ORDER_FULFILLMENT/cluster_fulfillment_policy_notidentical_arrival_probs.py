@@ -1,9 +1,12 @@
+# cluster_fulfillment_policy_notidentical_arrival_probs.py
+
 import numpy as np
 import random
+from order_fulfillment_environment_notidentical_arrival_probs import OrderFulfillment
 from magician_problem import MagicianProblem
 
 class FulfillmentPolicy:
-    def __init__(self, order_fulfillment, LP_solution, methods, sizes, consumption_probability_lists, get_optimization_results):
+    def __init__(self, order_fulfillment: OrderFulfillment, LP_solution, methods, sizes, consumption_probability_lists, get_optimization_results):
         # Order_fulfillment object passed as parameter
         self.order_fulfillment = order_fulfillment
         # Validate that all necessary attributes have been initialized
@@ -74,8 +77,8 @@ class FulfillmentPolicy:
             magician_problems[pair_i_k] = {}
             magician_problems[pair_i_k]['breaking_wand_probabilities'] = self.consumption_probability_lists[pair_i_k]
             magician_problems[pair_i_k]['gamma'] = 1-conservative_prob/np.sqrt(self.order_fulfillment.safety_stock[pair_i_k[1]][pair_i_k[0]]+3)
-            if sum(magician_problems[pair_i_k]['breaking_wand_probabilities']) > self.order_fulfillment.safety_stock[pair_i_k[1]][pair_i_k[0]]:
-                print('expected number of broken wands larger than the available ones')
+            # if sum(magician_problems[pair_i_k]['breaking_wand_probabilities']) > self.order_fulfillment.safety_stock[pair_i_k[1]][pair_i_k[0]]:
+            #     print('expected number of broken wands larger than the available ones')
             # Create magician instance for (i,k) and check whether they open
             magician_problem = MagicianProblem(magician_problems[pair_i_k]['breaking_wand_probabilities'], magician_problems[pair_i_k]['gamma'], self.order_fulfillment)
             theta, open_list, prob_rand = magician_problem.solve_withcdfs(cdfs_magician_problems[pair_i_k])

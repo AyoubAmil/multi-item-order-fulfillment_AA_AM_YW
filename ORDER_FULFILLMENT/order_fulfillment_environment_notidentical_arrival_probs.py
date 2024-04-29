@@ -178,12 +178,12 @@ class OrderFulfillment:
     # Generate a probability distribution for the order size, including the empty order
     @staticmethod
     def generate_order_size_probabilities(n_max, seed_value):
-        """Generate a probability distribution for the order size, including the empty order."""
-        random.seed(seed_value)
-        prob_size = random.sample(range(0, 1000), n_max + 1)
-        sum_p = sum(prob_size)
-        prob_order_size = [i / sum_p for i in prob_size]
-        return prob_order_size
+       """Generate a probability distribution for the order size, including the empty order."""
+       random.seed(seed_value)
+       prob_size = random.sample(range(1, 1000), n_max + 1)
+       sum_p = sum(prob_size)
+       prob_order_size = [i / sum_p for i in prob_size]
+       return prob_order_size
 
     # Generate odert types and a probability distribution by type for each order size n
     def generate_demand_distribution(self, n_max, n_0, prob_order_size, seed_value):
@@ -226,6 +226,7 @@ class OrderFulfillment:
                 temp.append(demand)
             # Add the demand distribution over locations for each order type q of fixed order size n
             demand_distribution_by_type_by_location.append(temp)
+            
         return demand_distribution_by_type_by_location
     
     def adjust_arrival_probabilities(self, T):
@@ -394,12 +395,37 @@ class OrderFulfillment:
         return location_customers_by_facility_and_item
    
     # Calculate the total incoming expected demand for each facility and item 
+    # def calculate_expected_demand(self, facility_indices, items, location_customers_by_facility_and_item, order_types, adjusted_demand_distribution_by_type_by_location):
+    #     """
+    #     Calculate the total incoming expected demand for each facility and item.
+    #     """
+    #     expected_demand_k_i = []
+    #     for k in facility_indices:
+    #         for i in items:
+    #             prob = 0
+    #             # Iterate over cities served by the facility for the current item
+    #             for j in location_customers_by_facility_and_item[k][i]:
+    #                 # Iterate over demand types
+    #                 for order in order_types:
+    #                     print("facility:", k)
+    #                     print("location:", j)
+    #                     print("order:", order)
+    #                     if i in order:
+    #                         index_order = order_types.index(order)
+    #                         # Calculate average probability of the order occurring at city j over all time periods
+    #                         avg_prob = sum(adjusted_demand_distribution_by_type_by_location[t][len(order)][index_order-self.n_0*(len(order)-1)-1][j] for t in range(len(adjusted_demand_distribution_by_type_by_location))) / len(adjusted_demand_distribution_by_type_by_location)
+    #                         print("avg prob:", avg_prob)
+    #                         prob += avg_prob
+    #             expected_demand_k_i.append(prob)
+    #     return expected_demand_k_i
+    
     def calculate_expected_demand(self, facility_indices, items, location_customers_by_facility_and_item, order_types, adjusted_demand_distribution_by_type_by_location):
         """
         Calculate the total incoming expected demand for each facility and item.
         """
         expected_demand_k_i = []
         for k in facility_indices:
+            temp_k = []
             for i in items:
                 prob = 0
                 # Iterate over cities served by the facility for the current item
@@ -411,7 +437,8 @@ class OrderFulfillment:
                             # Calculate average probability of the order occurring at city j over all time periods
                             avg_prob = sum(adjusted_demand_distribution_by_type_by_location[t][len(order)][index_order-self.n_0*(len(order)-1)-1][j] for t in range(len(adjusted_demand_distribution_by_type_by_location))) / len(adjusted_demand_distribution_by_type_by_location)
                             prob += avg_prob
-                expected_demand_k_i.append(prob)
+                temp_k.append(prob)
+            expected_demand_k_i.append(temp_k)
         return expected_demand_k_i
 
     # Calculate safety stock for each facility k and item i
@@ -433,20 +460,39 @@ class OrderFulfillment:
     #         S.append(S_k)
     #     return S
     
-    def calculate_safety_stock(self, facility_indices, items, T, expected_demand_k_i, CSL, modified = 0):
+    # def calculate_safety_stock(self, facility_indices, items, T, expected_demand_k_i, CSL, modified = 0):
+    #     """
+    #     Calculate inventory level. No safety stock if modified = 0
+    #     """
+    #     mu = []
+    #     for k in facility_indices:
+    #         for i in items:
+    #             mu.append(T * expected_demand_k_i[k*len(items)+i])
+    #     S = []
+    #     for k in facility_indices:
+    #         S_k = []
+    #         for i in items:
+    #             S_k.append(np.ceil(mu[k*len(items)+i]))
+    #         S.append(S_k)
+    #     return S
+    
+    def calculate_safety_stock(self, facility_indices, items, T, expected_demand_k_i, CSL, modified=0):
         """
         Calculate inventory level. No safety stock if modified = 0
         """
-        mu = []
-        for k in facility_indices:
-            for i in items:
-                mu.append(T * expected_demand_k_i[k*len(items)+i])
         S = []
-        for k in facility_indices:
-            S_k = []
-            for i in items:
-                S_k.append(np.ceil(mu[k*len(items)+i]))
-            S.append(S_k)
+        for k_idx, k in enumerate(facility_indices):
+            temp_k = []
+            for i_idx, i in enumerate(items):
+                
+                mu = T * expected_demand_k_i[k_idx][i_idx]
+                mu = np.ceil(mu)
+                
+                # If you want to scale the safety stock by a factor
+                # mu = T * np.ceil(expected_demand_k_i[k_idx][i_idx])
+                
+                temp_k.append(mu)
+            S.append(temp_k)
         return S
     
     # METHODS FOR ORDER TYPES
@@ -590,27 +636,51 @@ class OrderFulfillment:
         return all_costs
     
     # Calculate indicator (i,k) in m
+    # def calculate_all_indicators_i_k(self, all_methods_location, i_k_pair):
+    #     """Indicator (i,k) in m."""
+    #     all_indicators = []
+    #     for methods_location in all_methods_location:
+    #         indicators = []
+    #         for method in methods_location['methods']:
+    #             if i_k_pair in method:
+    #                 indicators.append(1)
+    #             else:
+    #                 indicators.append(0)
+    #         all_indicators.append(indicators)
+    #     return all_indicators
+    
+    # def calculate_all_indicators_i_k(self, all_methods_location, i_k_pair):
     def calculate_all_indicators_i_k(self, all_methods_location, i_k_pair):
-        """Indicator (i,k) in m."""
-        all_indicators = []
-        for methods_location in all_methods_location:
-            indicators = []
-            for method in methods_location['methods']:
+        """Sparse representation of indicator (i,k) in m, structured for direct indexing by q and m."""
+        indicators = {}
+        for q, methods_location in enumerate(all_methods_location):
+            relevant_ms = set()
+            for m, method in enumerate(methods_location['methods']):
                 if i_k_pair in method:
-                    indicators.append(1)
-                else:
-                    indicators.append(0)
-            all_indicators.append(indicators)
-        return all_indicators
+                    relevant_ms.add(m)
+            if relevant_ms:
+                indicators[q] = relevant_ms
+        return indicators
+
 
     # Calculate indicators for all (i, k) pairs
+    # def calculate_all_indicators(self, all_methods_location, items, facilities):
+    #     """Calculate indicators for all (i, k) pairs."""
+    #     all_indicators = {}
+    #     for i in items:
+    #         for k in facilities:
+    #             i_k_pair = (i, k)
+    #             all_indicators[i_k_pair] = self.calculate_all_indicators_i_k(all_methods_location, i_k_pair)
+    #     return all_indicators
+    
     def calculate_all_indicators(self, all_methods_location, items, facilities):
         """Calculate indicators for all (i, k) pairs."""
         all_indicators = {}
         for i in items:
             for k in facilities:
-                i_k_pair = (i, k)
-                all_indicators[i_k_pair] = self.calculate_all_indicators_i_k(all_methods_location, i_k_pair)
+                if self.safety_stock[k][i] > 0: # Only calculate indicators for items that are in stock
+                    i_k_pair = (i, k)
+                    all_indicators[i_k_pair] = self.calculate_all_indicators_i_k(all_methods_location, i_k_pair)
         return all_indicators
 
 

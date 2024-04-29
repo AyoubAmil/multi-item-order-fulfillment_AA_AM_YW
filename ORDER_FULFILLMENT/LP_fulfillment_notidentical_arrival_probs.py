@@ -26,6 +26,8 @@ class SolvingLP:
         """
         Solve our LP relaxation.
         """
+        start_time_init = time.time()
+        
         model = gp.Model("LP relaxation")
         # Create variables
         x = {}
@@ -42,18 +44,28 @@ class SolvingLP:
         model.addConstrs((gp.quicksum(x[q][m] for m in range(len(self.M[q]['methods']))) == self.p[q] 
                                     for q in range(len(self.Q))), name="constraint_1")
 
-        model.addConstrs((gp.quicksum(x[q][m] * self.all_indicators[key][q][m] for q in range(len(self.all_indicators[key])) for m in range(len(self.all_indicators[key][q]))) <= self.S[key[1]][key[0]] 
-                                  for key in self.all_indicators), name="constraint_2")
+        # model.addConstrs((gp.quicksum(x[q][m] * self.all_indicators[key][q][m] for q in range(len(self.all_indicators[key])) for m in range(len(self.all_indicators[key][q]))) <= self.S[key[1]][key[0]] 
+        #                           for key in self.all_indicators), name="constraint_2")
         
-        start_time = time.time()
+        model.addConstrs((gp.quicksum(x[q][m] for q in self.all_indicators[key] for m in self.all_indicators[key][q])
+                  <= self.S[key[1]][key[0]] for key in self.all_indicators),
+                 name="constraint_2")
+
+        end_time_init = time.time()
+        initialization_duration = end_time_init - start_time_init
+        
         # Turn off the Gurobi output
         model.setParam("OutputFlag", 0)
+        
+        # Start timing for optimization
+        start_time_opt = time.time()
         
         # Solve model
         model.optimize()
         
-        end_time = time.time()
-        optimization_duration = end_time - start_time
+        # End timing for optimization
+        end_time_opt = time.time()
+        optimization_duration = end_time_opt - start_time_opt
         
         # Check if a feasible solution is found
         if model.status == GRB.OPTIMAL:
@@ -69,9 +81,9 @@ class SolvingLP:
             num_constrs = model.NumConstrs
             optimal_value = model.getObjective().getValue()
             
-            return x_sol, methods, sizes, num_vars, num_constrs, optimal_value, optimization_duration
+            return x_sol, methods, sizes, num_vars, num_constrs, optimal_value, initialization_duration, optimization_duration
         else:
-            return None, None, None, None, None, None, optimization_duration
+            return None, None, None, None, None, None, initialization_duration, optimization_duration
 
     def get_optimization_results(self):
         if self.solved_model is not None and self.model_solution is not None:
@@ -104,7 +116,7 @@ class SolvingLP:
         agg_distribution_flat = self.reshape_agg_adjusted_arrival_prob
 
         # Loop through all (i, k) pairs
-        for i_k_pair in self.all_indicators:
+        for i_k_pair, indicators_by_q in self.all_indicators.items():
             # Initialize an empty list to store probabilities for each time t
             consumption_probability_list = []
 
@@ -116,13 +128,13 @@ class SolvingLP:
                 # Flatten the distribution for time t to match structure of agg_distribution_flat
                 distribution_t_flat = self.reshape_adjusted_arrival_prob[t-1]
 
-                for q in range(len(self.all_indicators[i_k_pair])):
+                # Loop through each method group `q` that has relevant method indices for (i, k)
+                for q, relevant_ms in indicators_by_q.items():
                     
                     adjusted_prob_t = distribution_t_flat[q]
                     agg_prob = agg_distribution_flat[q]
                     
-                    scaled_solution = [LP_solution[q][method_index] * (adjusted_prob_t / agg_prob)
-                                       for method_index, method_value in enumerate(self.all_indicators[i_k_pair][q]) if method_value == 1]
+                    scaled_solution = [LP_solution[q][m] * (adjusted_prob_t / agg_prob) for m in relevant_ms]
                     
                     probability_t += sum(scaled_solution)
             
@@ -134,6 +146,46 @@ class SolvingLP:
         return consumption_probability_lists
 
 
+    # def calculate_probabilities_of_consumption(self, LP_solution):
+    #     """Calculate time-dependent probability of consumption at time t for each pair (i, k), adjusted by demand distributions."""
+    #     consumption_probability_lists = {}
+
+    #     # Flatten agg_adjusted_demand_distribution_by_type_by_location
+    #     agg_distribution_flat = self.reshape_agg_adjusted_arrival_prob
+
+    #     # Loop through all (i, k) pairs
+    #     for i_k_pair in self.all_indicators:
+    #         # Initialize an empty list to store probabilities for each time t
+    #         consumption_probability_list = []
+
+    #         # Loop through all time periods
+    #         for t in range(1, self.T + 1):
+                
+    #             probability_t = 0
+
+    #             # Flatten the distribution for time t to match structure of agg_distribution_flat
+    #             distribution_t_flat = self.reshape_adjusted_arrival_prob[t-1]
+
+    #             for q in range(len(self.all_indicators[i_k_pair])):
+                    
+    #                 adjusted_prob_t = distribution_t_flat[q]
+    #                 agg_prob = agg_distribution_flat[q]
+                    
+    #                 scaled_solution = [LP_solution[q][method_index] * (adjusted_prob_t / agg_prob)
+    #                                    for method_index, method_value in enumerate(self.all_indicators[i_k_pair][q]) if method_value == 1]
+                    
+    #                 probability_t += sum(scaled_solution)
+            
+    #             consumption_probability_list.append(probability_t)
+
+    #         # Save the probability list for the (i, k) pair
+    #         consumption_probability_lists[i_k_pair] = consumption_probability_list
+
+    #     return consumption_probability_lists
+
+
+    # OLD FUNCTIONS
+    
     # def calculate_probabilities_of_consumption(self, LP_solution, sizes):
     #     """Calculate time-dependent probability of consumption at time t for each pair (i, k)."""
     #     consumption_probability_lists = {}

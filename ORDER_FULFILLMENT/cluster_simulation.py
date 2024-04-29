@@ -1,3 +1,5 @@
+# cluster_simulation.py
+
 import pickle
 import numpy as np
 import os
@@ -63,7 +65,7 @@ def evaluate_policies(n_max, T, alpha, instance, num_order_sequences=num_order_s
     with open(os.path.join(dir_results, 'get_optimization_results.pkl'), 'rb') as f:
         get_optimization_results = pickle.load(f)
     
-    dir_results_wm = f'/hpc/home/aa554/LP_results_WM_instance={instance}/n_max={n_max}/T={T}'
+    dir_results_wm = f'/hpc/home/aa554/LP_results_WM_instance={instance}/n_max={n_max}/T={T}_alpha={alpha}'
         
     with open(os.path.join(dir_results_wm, 'wm_num_vars.pkl'), 'rb') as f:
         wm_num_vars = pickle.load(f)

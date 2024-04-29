@@ -1,8 +1,11 @@
+# fulfillment_policy_Will_Ma.py
+
 import numpy as np
 import copy
+from order_fulfillment_environment_notidentical_arrival_probs import OrderFulfillment
 
 class WillMaFulfillmentPolicy:
-    def __init__(self, order_fulfillment, optimal_u):
+    def __init__(self, order_fulfillment: OrderFulfillment, optimal_u):
         self.order_fulfillment = order_fulfillment
         self.optimal_u = optimal_u
         self.S = order_fulfillment.safety_stock
