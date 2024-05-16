@@ -1,6 +1,6 @@
 # magician_problem.py
 
-from order_fulfillment_environment_notidentical_arrival_probs import OrderFulfillment
+from order_fulfillment_network import OrderFulfillment
 import numpy as np
 from collections import defaultdict
 
@@ -8,7 +8,7 @@ class MagicianProblem:
     def __init__(self, x, gamma, order_fulfillment: OrderFulfillment):
         self.x = x # Probability list of breaking a wand
         self.gamma = gamma # Lower bound on the probability of opening a box
-        self.T = order_fulfillment.T  # Time horizon
+        self.T = order_fulfillment.T  # For convinience, using the same T from the order_fulfillment object
         self.theta = [] # List of thresholds
         self.prob_rand = [] # List of probabilities of opening a box
         self.open_list = [] # List of lists of 0s and 1s, where 1 means that the box is opened
@@ -68,7 +68,6 @@ class MagicianProblem:
         return self.theta, self.open_list, self.prob_rand
 
     def solve(self):
-        # np.random.seed(1)
         F_Wt = dict()
         s_t = defaultdict(int)
         for t in range(self.T):
@@ -88,8 +87,6 @@ class MagicianProblem:
                     self.prob_rand.append(s_t[l])
                 else:
                     open.append(0)
-            # if self.gamma == 1:
-            #     open = [1] * (t + 2)
             self.open_list.append(open)
             F_Wt = F_Wtplus1
         return self.theta, self.open_list, self.prob_rand 

@@ -2,7 +2,7 @@
 
 import numpy as np
 import copy
-from order_fulfillment_environment_notidentical_arrival_probs import OrderFulfillment
+from order_fulfillment_network import OrderFulfillment
 
 class WillMaFulfillmentPolicy:
     def __init__(self, order_fulfillment: OrderFulfillment, optimal_u):
@@ -59,11 +59,8 @@ class WillMaFulfillmentPolicy:
         tot_cost = 0
         rem_inv = copy.deepcopy(self.S)
         
-        # costs = []
-        
         for t in range(len(arrivals)):
             
-            # cost = 0
             
             order, j = arrivals[t] # order is a tuple of items, j is the location
             q = self.order_types.index(order) # q is now the order index
@@ -81,14 +78,11 @@ class WillMaFulfillmentPolicy:
                     k = self.K
                 fc_used[k] = True
                 tot_cost += self.c_unit[k][j]
-                # cost += self.c_unit[k][j]
 
             for k in range(self.K + 1):
                 if fc_used[k]:
                     tot_cost += self.c_fixed[k][j]
-                    # cost += self.c_fixed[k][j]
-        #     costs.append(cost)
-        # print(costs)
+                    
         return tot_cost
 
 

@@ -1,7 +1,7 @@
 # LP_fulfillment.py
 
 import time
-from order_fulfillment_environment_notidentical_arrival_probs import OrderFulfillment
+from order_fulfillment_network import OrderFulfillment
 from gurobipy import GRB
 from gurobipy import *
 import gurobipy as gp
@@ -14,7 +14,7 @@ class SolvingLP:
         self.p = order_fulfillment.reshape_agg_adjusted_arrival_prob  # Arrival probabilities for each order type (aggregated over time)
         self.S = order_fulfillment.safety_stock  # Inventory for each (i, k) pair
         self.c = order_fulfillment.all_costs  # Return the cost of each method
-        self.all_indicators = order_fulfillment.all_indicators # Return the indicators $(i,k) \in m$ for each (i, k) pair
+        self.all_indicators = order_fulfillment.all_indicators # Return the indicators $(i,k) \in m$ for each (i, k) pair that has inventory
         self.alpha = order_fulfillment.alpha
         self.reshape_adjusted_arrival_prob = order_fulfillment.reshape_adjusted_arrival_prob
         self.reshape_agg_adjusted_arrival_prob = order_fulfillment.reshape_agg_adjusted_arrival_prob
@@ -54,8 +54,13 @@ class SolvingLP:
         end_time_init = time.time()
         initialization_duration = end_time_init - start_time_init
         
-        # Turn off the Gurobi output
-        model.setParam("OutputFlag", 0)
+        # Turn off the Gurobi output with model.setParam("OutputFlag", 0)
+        model.setParam("OutputFlag", 1)
+        
+        # # Specify the Dual Simplex method
+        # model.setParam("Method", 1)
+        # Specify the Primal Simplex method
+        model.setParam("Method", 0)
         
         # Start timing for optimization
         start_time_opt = time.time()
@@ -144,140 +149,6 @@ class SolvingLP:
             consumption_probability_lists[i_k_pair] = consumption_probability_list
 
         return consumption_probability_lists
-
-
-    # def calculate_probabilities_of_consumption(self, LP_solution):
-    #     """Calculate time-dependent probability of consumption at time t for each pair (i, k), adjusted by demand distributions."""
-    #     consumption_probability_lists = {}
-
-    #     # Flatten agg_adjusted_demand_distribution_by_type_by_location
-    #     agg_distribution_flat = self.reshape_agg_adjusted_arrival_prob
-
-    #     # Loop through all (i, k) pairs
-    #     for i_k_pair in self.all_indicators:
-    #         # Initialize an empty list to store probabilities for each time t
-    #         consumption_probability_list = []
-
-    #         # Loop through all time periods
-    #         for t in range(1, self.T + 1):
-                
-    #             probability_t = 0
-
-    #             # Flatten the distribution for time t to match structure of agg_distribution_flat
-    #             distribution_t_flat = self.reshape_adjusted_arrival_prob[t-1]
-
-    #             for q in range(len(self.all_indicators[i_k_pair])):
-                    
-    #                 adjusted_prob_t = distribution_t_flat[q]
-    #                 agg_prob = agg_distribution_flat[q]
-                    
-    #                 scaled_solution = [LP_solution[q][method_index] * (adjusted_prob_t / agg_prob)
-    #                                    for method_index, method_value in enumerate(self.all_indicators[i_k_pair][q]) if method_value == 1]
-                    
-    #                 probability_t += sum(scaled_solution)
-            
-    #             consumption_probability_list.append(probability_t)
-
-    #         # Save the probability list for the (i, k) pair
-    #         consumption_probability_lists[i_k_pair] = consumption_probability_list
-
-    #     return consumption_probability_lists
-
-
-    # OLD FUNCTIONS
-    
-    # def calculate_probabilities_of_consumption(self, LP_solution, sizes):
-    #     """Calculate time-dependent probability of consumption at time t for each pair (i, k)."""
-    #     consumption_probability_lists = {}
-
-    #     # Loop through all (i, k) pairs
-    #     for i_k_pair in self.all_indicators:
-    #         # Initialize an empty list to store probabilities for each time t
-    #         consumption_probability_list = []
-
-    #         # Loop through all time periods
-    #         for t in range(1, self.T + 1):
-    #             probability_sum = 0
-
-    #             # Determine the scaling factor based on the time period
-    #             alpha_scale = 2 * self.alpha if t <= self.T // 2 else 2 * (1 - self.alpha)
-
-    #             # Calculate solutions for methods that contain (i, k)
-    #             for q in range(len(self.all_indicators[i_k_pair])):
-    #                 if sizes[q] == 1:
-    #                     # Apply scaling for orders of size 1
-    #                     scaled_solution = [LP_solution[q][method_index] * alpha_scale
-    #                                     for method_index, method_value in enumerate(self.all_indicators[i_k_pair][q]) if method_value == 1]
-    #                 else:
-    #                     # Apply scaling for orders of size greater than 1
-    #                     scaled_solution = [LP_solution[q][method_index] * (2 - alpha_scale)
-    #                                     for method_index, method_value in enumerate(self.all_indicators[i_k_pair][q]) if method_value == 1]
-                    
-    #                 probability_sum += sum(scaled_solution)
-                    
-    #             # Calculate the probability for the time t
-    #             probability_t = probability_sum / self.T
-    #             consumption_probability_list.append(probability_t)
-
-    #         # Save the probability list for the (i, k) pair
-    #         consumption_probability_lists[i_k_pair] = consumption_probability_list
-
-    #     return consumption_probability_lists
-    
-    # def calculate_probabilities_of_consumption(self, LP_solution, sizes, methods):
-    #     """Calculate time-dependent probability of consumption at time t for each pair (i, k)."""
-    #     consumption_probability_lists = {}
-
-    #     # Loop through all (i, k) pairs
-    #     for i_k_pair in self.all_indicators:
-    #         # Initialize an empty list to store probabilities for each time t
-    #         consumption_probability_list = []
-
-    #         # Loop through all time periods
-    #         for t in range(1, self.T + 1):
-    #             probability_sum = 0
-
-    #             # Determine the scaling factor based on the time period
-    #             alpha_scale = 2 * self.alpha if t <= self.T // 2 else 2 * (1 - self.alpha)
-
-    #             # Calculate solutions for methods that contain (i, k)
-    #             for q in range(len(self.all_indicators[i_k_pair])):
-    #                 if sizes[q] == 1:
-    #                     # Apply scaling for orders of size 1
-    #                     scaled_solution = [LP_solution[q][method_index] * alpha_scale
-    #                                     for method_index, method_value in enumerate(self.all_indicators[i_k_pair][q]) if method_value == 1]
-    #                 else:
-    #                     # Apply scaling for orders of size greater than 1
-    #                     scaled_solution = [LP_solution[q][method_index] * (2 - alpha_scale)
-    #                                     for method_index, method_value in enumerate(self.all_indicators[i_k_pair][q]) if method_value == 1]
-                    
-    #                 for method_index, method_value in enumerate(self.all_indicators[i_k_pair][q]):
-    #                     if method_value == 1 and i_k_pair == (4,0) and t==1:
-    #                         print(LP_solution[q][method_index], methods[q][method_index])
-    #                 probability_sum += sum(scaled_solution)
-
-    #             # Calculate the probability for the time t
-    #             probability_t = probability_sum / self.T
-    #             consumption_probability_list.append(probability_t)
-
-    #         # Save the probability list for the (i, k) pair
-    #         consumption_probability_lists[i_k_pair] = consumption_probability_list
-
-    #     return consumption_probability_lists
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

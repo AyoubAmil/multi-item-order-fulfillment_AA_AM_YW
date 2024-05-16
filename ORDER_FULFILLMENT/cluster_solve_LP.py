@@ -1,35 +1,32 @@
 import os
 import numpy as np
 import pickle
-from order_fulfillment_environment_notidentical_arrival_probs import OrderFulfillment
+from order_fulfillment_network import OrderFulfillment
 from LP_fulfillment_notidentical_arrival_probs import SolvingLP
-from LP_fulfillment_item_facility_based_reorg import ItemFacilityLPSolver
+from LP_fulfillment_item_facility_based import ItemFacilityLPSolver
 
-# facility_path = "fulfillment_centers_warmup.csv"
-# cities_path = "cities_warmup.csv"
-facility_path = "fulfillment_centers.csv"
-cities_path = "cities.csv"
-# home_path = "/Users/ayoubamil/Documents/GitHub/multi-item-order-fulfillment_AA_AM_YW/ORDER_FULFILLMENT/Data"
-home_path = os.getcwd() + "/ORDER_FULFILLMENT/Data"
+# Network with 10 cities and 5 facilities
+facility_path = "fulfillment_centers_warmup.csv"
+cities_path = "cities_warmup.csv"
+
+# Network with 99 cities and 10 facilities
+# facility_path = "fulfillment_centers.csv"
+# cities_path = "cities.csv"
+
+home_path = os.getcwd() + "/ORDER_FULFILLMENT/Data" # Change this to the path where the data is stored
 facilities_path = os.path.join(home_path, facility_path)
 cities_path =  os.path.join(home_path, cities_path)
 
 num_instances = 30
 instances = np.arange(1, num_instances + 1)
-# T_values = [10**3, 10**4, 10**5, 10**6]
 T_values = [10**3]
-# alpha_values = [0.1, 0.5, 0.75, 0.9, 0.95, 0.96, 0.97, 0.98, 0.99, 1]
-# alpha_values = [0.5, 0.9, 1]
 alpha_values = [0.5]
-# T_base = 10**3
-# alpha_base = 0.5
 
 num_items = 20
-# n_max = 2
-n_max = 5
+n_max = 2
+# n_max = 5 Uncomment this line for larger order sizes
 n_0 = 5
 p_stock = 0.75
-CSL=0.5
 
 def DLP_WillMa(order_fulfillment, print_optimal_values=False):
     
@@ -46,7 +43,7 @@ def DLP_WillMa(order_fulfillment, print_optimal_values=False):
     initialization_duration = results["initialization_duration"]
     optimization_duration = results["optimization_duration"]
 
-    # Step 4: Check if optimization was successful and print results
+    # Check if optimization was successful and print results
     if optimal_u and optimal_y:
         
         if print_optimal_values:
@@ -68,7 +65,7 @@ for instance in instances:
     for T in T_values:
         for alpha in alpha_values:
             # Solve our LP for the base value of T
-            order_fulfillment = OrderFulfillment(num_items=num_items, n_max=n_max, n_0=n_0, p_stock=p_stock, T=T, CSL=CSL, 
+            order_fulfillment = OrderFulfillment(num_items=num_items, n_max=n_max, n_0=n_0, p_stock=p_stock, T=T, 
                                                         facilities_data=facilities_path, 
                                                         cities_data=cities_path, 
                                                         prob_seed_value=instance, 
@@ -82,8 +79,7 @@ for instance in instances:
             wm_num_vars, wm_num_constrs, wm_optimal_value, optimal_u, optimal_y, wm_initialization_duration, wm_optimization_duration = DLP_WillMa(order_fulfillment)
             
             # SAVE WM RESULTS
-            # instance_dir_wm = f'LP_results_WM_instance={instance}/n_max={n_max}/T={T}_alpha={alpha}'
-            instance_dir_wm = f'Big_Network/LP_results_WM_instance={instance}/n_max={n_max}/T={T}_alpha={alpha}'
+            instance_dir_wm = f'LP_results_WM_instance={instance}/n_max={n_max}/T={T}_alpha={alpha}'
             
             if not os.path.exists(instance_dir_wm):
                 os.makedirs(instance_dir_wm)
@@ -110,8 +106,7 @@ for instance in instances:
                 "num_constrs": num_constrs, "optimal_value": optimal_value}
 
             # Save our results
-            # instance_dir = f'LP_results_instance={instance}/n_max={n_max}/T={T}_alpha={alpha}'
-            instance_dir = f'Big_Network/LP_results_instance={instance}/n_max={n_max}/T={T}_alpha={alpha}'
+            instance_dir = f'LP_results_instance={instance}/n_max={n_max}/T={T}_alpha={alpha}'
             
             if not os.path.exists(instance_dir):
                 os.makedirs(instance_dir)

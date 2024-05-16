@@ -5,7 +5,7 @@ import numpy as np
 import os
 import csv
 from scipy import stats
-from order_fulfillment_environment_notidentical_arrival_probs import OrderFulfillment
+from order_fulfillment_network import OrderFulfillment
 from cluster_fulfillment_policy_notidentical_arrival_probs import FulfillmentPolicy
 from fulfillment_policy_Will_Ma import WillMaFulfillmentPolicy
 
@@ -14,12 +14,19 @@ n_0 = 5
 p_stock = 0.75
 CSL=0.5
 
-conservative_prob_sequence=[0, 0.01, 0.05, 0.1, 0.15, 0.2, 1]
+conservative_prob_sequence=[0, 0.01, 0.1, 1]
 
 num_order_sequences = 100
 
+# Network with 10 cities and 5 facilities
 facility_path = "fulfillment_centers_warmup.csv"
 cities_path = "cities_warmup.csv"
+
+# Network with 99 cities and 10 facilities
+# facility_path = "fulfillment_centers.csv"
+# cities_path = "cities.csv"
+
+# Modify this path to the data files
 home_path = "/hpc/home/aa554/Data/"
 facilities_path = os.path.join(home_path, facility_path)
 cities_path =  os.path.join(home_path, cities_path)
@@ -212,6 +219,7 @@ def evaluate_policies(n_max, T, alpha, instance, num_order_sequences=num_order_s
     
         results_over_conservative_probs[f"{conservative_prob}"] = results_per_conservative_probs
     
+    # Modify this path to the results folder
     res_path = f"/hpc/home/aa554/Results/num_items={num_items}_n_max={n_max}_n_0={n_0}/instance={instance}_T={T}_alpha={alpha}"
     
     if not os.path.exists(res_path):
@@ -258,5 +266,12 @@ def evaluate_policies(n_max, T, alpha, instance, num_order_sequences=num_order_s
         writer.writeheader()
         for row in data_for_csv:
             writer.writerow(row)
-            
-# evaluate_policies(n_max, T, alpha, instance, num_order_sequences=num_order_sequences, num_items=num_items, n_0=n_0, p_stock=p_stock, conservative_prob_sequence=conservative_prob_sequence)
+
+# Parameters for the simulation
+n_max = 2
+T = 1000
+alpha = 0.5
+instance = 1
+
+# Uncomment the following line to run the simulation
+# evaluate_policies(n_max=n_max, T=T, alpha=alpha, instance=instance, num_order_sequences=num_order_sequences, num_items=num_items, n_0=n_0, p_stock=p_stock, conservative_prob_sequence=conservative_prob_sequence)
