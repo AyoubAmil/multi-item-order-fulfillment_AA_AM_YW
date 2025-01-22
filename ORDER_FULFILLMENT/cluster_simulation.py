@@ -12,7 +12,6 @@ from fulfillment_policy_Will_Ma import WillMaFulfillmentPolicy
 num_items = 20
 n_0 = 5
 p_stock = 0.75
-CSL=0.5
 
 conservative_prob_sequence=[0, 0.01, 0.1, 1]
 
@@ -90,7 +89,7 @@ def evaluate_policies(n_max, T, alpha, instance, num_order_sequences=num_order_s
         our_optimization_duration = pickle.load(f)
     
     # This object has the be the same as the one used to generate the LP results in the cluster_solve_LP.py    
-    order_fulfillment = OrderFulfillment(num_items=num_items, n_max=n_max, n_0=n_0, p_stock=p_stock, T=T, CSL=CSL, 
+    order_fulfillment = OrderFulfillment(num_items=num_items, n_max=n_max, n_0=n_0, p_stock=p_stock, T=T, 
                                         facilities_data=facilities_path, 
                                         cities_data=cities_path, 
                                         prob_seed_value=instance, 
